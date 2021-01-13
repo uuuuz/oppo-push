@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	MaxTimeToLive = 3600 * 24
+	MaxTimeToLive = 3600 * 23    // 提前一小时过期，然后重新获取
 )
 
 type OppoToken struct {
@@ -36,6 +36,19 @@ func GetToken(appKey, masterSecret string) (*OppoToken, error) {
 	if (nowMilliSecond-tokenInstance.CreateTime) < MaxTimeToLive*1000 && tokenInstance.AccessToken != "" {
 		return tokenInstance, nil
 	}
+	// 从缓存中获取，若缓存中不存在则重新获取
+	if tokenCache != nil{
+		ti, err := tokenCache.Get()
+		if err != nil{
+			return nil, err
+		}
+		if ti != nil{
+			tokenInstance.AccessToken = ti.Token
+			tokenInstance.CreateTime = ti.TokenCreateTime
+			return tokenInstance, nil
+		}
+	}
+
 	timestamp := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
 	shaByte := sha256.Sum256([]byte(appKey + timestamp + masterSecret))
 	sign := fmt.Sprintf("%x", shaByte)
@@ -60,6 +73,18 @@ func GetToken(appKey, masterSecret string) (*OppoToken, error) {
 	if result.Code != 0 {
 		return nil, errors.New(result.Message)
 	}
+
+	// 更新缓存
+	if tokenCache != nil{
+		if err := tokenCache.Set(&TokenInfo{
+			Token: result.Data.AuthToken,
+			TokenCreateTime: result.Data.CreateTime,
+			KeyExpire: MaxTimeToLive,
+		}); err != nil{
+			return nil, err
+		}
+	}
+
 	tokenInstance.AccessToken = result.Data.AuthToken
 	tokenInstance.CreateTime = result.Data.CreateTime
 	return tokenInstance, nil
