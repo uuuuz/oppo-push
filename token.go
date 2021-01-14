@@ -38,17 +38,28 @@ func GetToken(appKey, masterSecret string) (*OppoToken, error) {
 	}
 	// 从缓存中获取，若缓存中不存在则重新获取
 	if tokenCache != nil{
-		ti, err := tokenCache.Get()
+		ti, err := tokenCache.CacheToken(appKey, masterSecret)
 		if err != nil{
-			return nil, err
+			return tokenInstance, err
 		}
-		if ti != nil{
+		if ti != nil{ // 若获取到了token，则更新，否则使用原先的
 			tokenInstance.AccessToken = ti.Token
 			tokenInstance.CreateTime = ti.TokenCreateTime
-			return tokenInstance, nil
+		}
+	} else {
+		ot, err := GetTokenByRequest(appKey, masterSecret)
+		if err != nil{
+			return tokenInstance, err
+		}
+		if ot != nil{
+			tokenInstance.AccessToken = ot.AccessToken
+			tokenInstance.CreateTime = ot.CreateTime
 		}
 	}
+	return tokenInstance, nil
+}
 
+func GetTokenByRequest(appKey, masterSecret string) (*OppoToken, error) {
 	timestamp := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
 	shaByte := sha256.Sum256([]byte(appKey + timestamp + masterSecret))
 	sign := fmt.Sprintf("%x", shaByte)
@@ -73,19 +84,8 @@ func GetToken(appKey, masterSecret string) (*OppoToken, error) {
 	if result.Code != 0 {
 		return nil, errors.New(result.Message)
 	}
-
-	// 更新缓存
-	if tokenCache != nil{
-		if err := tokenCache.Set(&TokenInfo{
-			Token: result.Data.AuthToken,
-			TokenCreateTime: result.Data.CreateTime,
-			KeyExpire: MaxTimeToLive,
-		}); err != nil{
-			return nil, err
-		}
-	}
-
-	tokenInstance.AccessToken = result.Data.AuthToken
-	tokenInstance.CreateTime = result.Data.CreateTime
-	return tokenInstance, nil
+	return &OppoToken{
+		AccessToken: result.Data.AuthToken,
+		CreateTime: result.Data.CreateTime,
+	}, nil
 }
