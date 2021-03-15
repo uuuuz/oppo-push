@@ -32,10 +32,10 @@ func init() {
 
 //GetToken 获取AccessToken值
 func GetToken(appKey, masterSecret string) (*OppoToken, error) {
-	//nowMilliSecond := time.Now().UnixNano() / 1e6
-	//if (nowMilliSecond-tokenInstance.CreateTime) < MaxTimeToLive*1000 && tokenInstance.AccessToken != "" {
-	//	return tokenInstance, nil
-	//}
+	nowMilliSecond := time.Now().UnixNano() / 1e6
+	if (nowMilliSecond-tokenInstance.CreateTime) < MaxTimeToLive*1000 && tokenInstance.AccessToken != "" {
+		return tokenInstance, nil
+	}
 	// 从缓存中获取，若缓存中不存在则重新获取
 	if tokenCache != nil{
 		ti, err := tokenCache.CacheToken(appKey, masterSecret)
