@@ -3,9 +3,12 @@ package oppopush
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"strconv"
 )
+
+const InvalidAuthTokenCode = 11
 
 type OppoPush struct {
 	appKey       string
@@ -41,7 +44,7 @@ func (c *OppoPush) SaveMessageContent(msg *NotificationMessage) (*SaveSendResult
 
 // 广播推送-通知栏消息
 func (c *OppoPush) Broadcast(broadcast *Broadcast) (*BroadcastSendResult, error) {
-	tokenInstance, err := GetToken(c.appKey, c.masterSecret)
+	token, err := GetToken(c.appKey, c.masterSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +52,7 @@ func (c *OppoPush) Broadcast(broadcast *Broadcast) (*BroadcastSendResult, error)
 	params.Add("message_id", broadcast.MessageID)
 	params.Add("target_type", strconv.Itoa(broadcast.TargetType))
 	params.Add("target_value", broadcast.TargetValue)
-	params.Add("auth_token", tokenInstance.AccessToken)
+	params.Add("auth_token", token.AccessToken)
 	bytes, err := doPost(PushHost+MessageBroadcastURL, params)
 	if err != nil {
 		return nil, err
@@ -60,20 +63,27 @@ func (c *OppoPush) Broadcast(broadcast *Broadcast) (*BroadcastSendResult, error)
 		return nil, err
 	}
 	if result.Code != 0 {
-		return nil, errors.New(result.Message)
+		if result.Code == InvalidAuthTokenCode && tokenCache != nil{
+			ti, _ := tokenCache.CacheToken(c.appKey, c.masterSecret)
+			if ti != nil{ // 若获取到了token，则更新，否则使用原先的
+				tokenInstance.AccessToken = ti.Token
+				tokenInstance.CreateTime = ti.TokenCreateTime
+			}
+		}
+		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
 	return &result, nil
 }
 
 // 单推-通知栏消息推送
 func (c *OppoPush) Unicast(message *Message) (*UnicastSendResult, error) {
-	tokenInstance, err := GetToken(c.appKey, c.masterSecret)
+	token, err := GetToken(c.appKey, c.masterSecret)
 	if err != nil {
 		return nil, err
 	}
 	params := url.Values{}
 	params.Add("message", message.String())
-	params.Add("auth_token", tokenInstance.AccessToken)
+	params.Add("auth_token", token.AccessToken)
 	bytes, err := doPost(PushHost+MessageUnicastURL, params)
 	if err != nil {
 		return nil, err
@@ -84,7 +94,14 @@ func (c *OppoPush) Unicast(message *Message) (*UnicastSendResult, error) {
 		return nil, err
 	}
 	if result.Code != 0 {
-		return nil, errors.New(result.Message)
+		if result.Code == InvalidAuthTokenCode && tokenCache != nil{
+			ti, _ := tokenCache.CacheToken(c.appKey, c.masterSecret)
+			if ti != nil{ // 若获取到了token，则更新，否则使用原先的
+				tokenInstance.AccessToken = ti.Token
+				tokenInstance.CreateTime = ti.TokenCreateTime
+			}
+		}
+		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
 	return &result, nil
 }
