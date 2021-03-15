@@ -64,11 +64,10 @@ func (c *OppoPush) Broadcast(broadcast *Broadcast) (*BroadcastSendResult, error)
 	}
 	if result.Code != 0 {
 		if result.Code == InvalidAuthTokenCode && tokenCache != nil{
-			ti, _ := tokenCache.CacheToken(c.appKey, c.masterSecret)
-			if ti != nil{ // 若获取到了token，则更新，否则使用原先的
-				tokenInstance.AccessToken = ti.Token
-				tokenInstance.CreateTime = ti.TokenCreateTime
+			if err := tokenCache.ClearToken(); err != nil{
+				return nil, err
 			}
+			tokenInstance.AccessToken = ""   // 置空无效token
 		}
 		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
@@ -95,11 +94,10 @@ func (c *OppoPush) Unicast(message *Message) (*UnicastSendResult, error) {
 	}
 	if result.Code != 0 {
 		if result.Code == InvalidAuthTokenCode && tokenCache != nil{
-			ti, _ := tokenCache.CacheToken(c.appKey, c.masterSecret)
-			if ti != nil{ // 若获取到了token，则更新，否则使用原先的
-				tokenInstance.AccessToken = ti.Token
-				tokenInstance.CreateTime = ti.TokenCreateTime
+			if err := tokenCache.ClearToken(); err != nil{
+				return nil, err
 			}
+			tokenInstance.AccessToken = ""   // 置空无效token
 		}
 		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
