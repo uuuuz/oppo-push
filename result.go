@@ -1,8 +1,14 @@
 package oppopush
 
-type AuthSendResult struct {
+const InvalidAuthTokenCode = 11
+
+type BaseBean struct {
 	Code    int    `json:"code"`              // 必选,返回码
 	Message string `json:"message,omitempty"` // 可选，返回消息
+}
+
+type AuthSendResult struct {
+	BaseBean
 	Data    struct {
 		AuthToken  string `json:"auth_token"`  //权限令牌，推送消息时，需要提供 auth_token，有效期默认为 24 小时，过期后无法使用
 		CreateTime int64  `json:"create_time"` //"时间毫秒数
@@ -10,16 +16,14 @@ type AuthSendResult struct {
 }
 
 type SaveSendResult struct {
-	Code    int    `json:"code"`              // 必选,返回码
-	Message string `json:"message,omitempty"` // 可选，返回消息
+	BaseBean
 	Data    struct {
 		MessageID string `json:"message_id"` //消息 ID
 	} `json:"data,omitempty"` // 可选，返回结果
 }
 
 type BroadcastSendResult struct {
-	Code    int    `json:"code"`              // 必选,返回码
-	Message string `json:"message,omitempty"` // 可选，返回消息
+	BaseBean
 	Data    struct {
 		MessageID string `json:"message_id"` //消息 ID
 		TaskId    string `json:"task_id"`    //推送任务 ID
@@ -27,16 +31,14 @@ type BroadcastSendResult struct {
 }
 
 type UnicastSendResult struct {
-	Code    int    `json:"code"`              // 必选,返回码
-	Message string `json:"message,omitempty"` // 可选，返回消息
+	BaseBean
 	Data    struct {
 		MessageID string `json:"messageId"` //消息 ID
 	} `json:"data,omitempty"` // 可选，返回结果
 }
 
 type UnicastBatchSendResult struct {
-	Code    int    `json:"code"`              // 必选,返回码
-	Message string `json:"message,omitempty"` // 可选，返回消息
+	BaseBean
 	Data    []struct {
 		MessageID      string `json:"messageId"` //消息 ID
 		RegistrationID string `json:"registrationId"`
@@ -46,10 +48,22 @@ type UnicastBatchSendResult struct {
 }
 
 type FetchInvalidRegidListSendResult struct {
-	Code    int    `json:"code"`              // 必选,返回码
-	Message string `json:"message,omitempty"` // 可选，返回消息
+	BaseBean
 	Data    struct {
 		RegistrationIds []string `json:"registration_ids"`
 		TotalCount      int      `json:"totalCount"`
 	} `json:"data,omitempty"` // 可选，返回结果
+}
+
+func (b *BaseBean) CheckCode() error {
+	switch b.Code {
+	case InvalidAuthTokenCode:
+		if tokenCache != nil {
+			if err := tokenCache.ClearToken(); err != nil{
+				return err
+			}
+			tokenInstance.AccessToken = ""   // 置空无效token
+		}
+	}
+	return nil
 }

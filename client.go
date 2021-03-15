@@ -8,8 +8,6 @@ import (
 	"strconv"
 )
 
-const InvalidAuthTokenCode = 11
-
 type OppoPush struct {
 	appKey       string
 	masterSecret string
@@ -63,11 +61,8 @@ func (c *OppoPush) Broadcast(broadcast *Broadcast) (*BroadcastSendResult, error)
 		return nil, err
 	}
 	if result.Code != 0 {
-		if result.Code == InvalidAuthTokenCode && tokenCache != nil{
-			if err := tokenCache.ClearToken(); err != nil{
-				return nil, err
-			}
-			tokenInstance.AccessToken = ""   // 置空无效token
+		if err := result.CheckCode(); err != nil{
+			return nil, err
 		}
 		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
@@ -93,11 +88,8 @@ func (c *OppoPush) Unicast(message *Message) (*UnicastSendResult, error) {
 		return nil, err
 	}
 	if result.Code != 0 {
-		if result.Code == InvalidAuthTokenCode && tokenCache != nil{
-			if err := tokenCache.ClearToken(); err != nil{
-				return nil, err
-			}
-			tokenInstance.AccessToken = ""   // 置空无效token
+		if err := result.CheckCode(); err != nil{
+			return nil, err
 		}
 		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
@@ -110,13 +102,13 @@ func (c *OppoPush) UnicastBatch(messages []Message) (*UnicastBatchSendResult, er
 	if err != nil {
 		return nil, err
 	}
-	tokenInstance, err := GetToken(c.appKey, c.masterSecret)
+	token, err := GetToken(c.appKey, c.masterSecret)
 	if err != nil {
 		return nil, err
 	}
 	params := url.Values{}
 	params.Add("messages", string(jsons))
-	params.Add("auth_token", tokenInstance.AccessToken)
+	params.Add("auth_token", token.AccessToken)
 	bytes, err := doPost(PushHost+MessageUnicastBatchURL, params)
 	if err != nil {
 		return nil, err
@@ -127,19 +119,22 @@ func (c *OppoPush) UnicastBatch(messages []Message) (*UnicastBatchSendResult, er
 		return nil, err
 	}
 	if result.Code != 0 {
-		return nil, errors.New(result.Message)
+		if err := result.CheckCode(); err != nil{
+			return nil, err
+		}
+		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
 	return &result, nil
 }
 
 // 获取失效的registration_id列表
 func (c *OppoPush) FetchInvalidRegidList() (*FetchInvalidRegidListSendResult, error) {
-	tokenInstance, err := GetToken(c.appKey, c.masterSecret)
+	token, err := GetToken(c.appKey, c.masterSecret)
 	if err != nil {
 		return nil, err
 	}
 	params := url.Values{}
-	params.Add("auth_token", tokenInstance.AccessToken)
+	params.Add("auth_token", token.AccessToken)
 	bytes, err := doGet(FeedbackHost+FetchInvalidRegidListURL, "?"+params.Encode())
 	if err != nil {
 		return nil, err
@@ -150,7 +145,10 @@ func (c *OppoPush) FetchInvalidRegidList() (*FetchInvalidRegidListSendResult, er
 		return nil, err
 	}
 	if result.Code != 0 {
-		return nil, errors.New(result.Message)
+		if err := result.CheckCode(); err != nil{
+			return nil, err
+		}
+		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
 	return &result, nil
 }
