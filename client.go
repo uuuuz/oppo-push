@@ -2,8 +2,6 @@ package oppopush
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/url"
 	"strconv"
 )
@@ -35,7 +33,7 @@ func (c *OppoPush) SaveMessageContent(msg *NotificationMessage) (*SaveSendResult
 	var result SaveSendResult
 	err = json.Unmarshal(bytes, &result)
 	if err != nil {
-		return nil, err
+		return &result, err
 	}
 	return &result, nil
 }
@@ -62,9 +60,8 @@ func (c *OppoPush) Broadcast(broadcast *Broadcast) (*BroadcastSendResult, error)
 	}
 	if result.Code != 0 {
 		if err := result.CheckCode(); err != nil{
-			return nil, err
+			return &result, err
 		}
-		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
 	return &result, nil
 }
@@ -89,9 +86,8 @@ func (c *OppoPush) Unicast(message *Message) (*UnicastSendResult, error) {
 	}
 	if result.Code != 0 {
 		if err := result.CheckCode(); err != nil{
-			return nil, err
+			return &result, err
 		}
-		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
 	return &result, nil
 }
@@ -120,9 +116,8 @@ func (c *OppoPush) UnicastBatch(messages []Message) (*UnicastBatchSendResult, er
 	}
 	if result.Code != 0 {
 		if err := result.CheckCode(); err != nil{
-			return nil, err
+			return &result, err
 		}
-		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
 	return &result, nil
 }
@@ -146,9 +141,8 @@ func (c *OppoPush) FetchInvalidRegidList() (*FetchInvalidRegidListSendResult, er
 	}
 	if result.Code != 0 {
 		if err := result.CheckCode(); err != nil{
-			return nil, err
+			return &result, err
 		}
-		return nil, errors.New(fmt.Sprintf("res=[%s], token=[createTime=%v,token=%s]", string(bytes), token.CreateTime, token.AccessToken))
 	}
 	return &result, nil
 }
