@@ -63,6 +63,7 @@ func (c *OppoPush) Broadcast(broadcast *Broadcast) (*BroadcastSendResult, error)
 			return &result, err
 		}
 	}
+
 	return &result, nil
 }
 
