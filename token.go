@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	MaxTimeToLive = 3600 * 23    // 提前一小时过期，然后重新获取
+	MaxTimeToLive = 3600 * 23 // 提前一小时过期，然后重新获取
 )
 
 type OppoToken struct {
@@ -21,42 +21,42 @@ type OppoToken struct {
 	CreateTime  int64  `json:"create_time"`
 }
 
-var tokenInstance *OppoToken
+/*var tokenInstance *OppoToken
 
 func init() {
 	tokenInstance = &OppoToken{
 		AccessToken: "",
 		CreateTime:  0,
 	}
-}
+}*/
 
 //GetToken 获取AccessToken值
-func GetToken(appKey, masterSecret string) (*OppoToken, error) {
+func (op *OppoPush) GetToken(appKey, masterSecret string) (*OppoToken, error) {
 	nowMilliSecond := time.Now().UnixNano() / 1e6
-	if (nowMilliSecond-tokenInstance.CreateTime) < MaxTimeToLive*1000 && tokenInstance.AccessToken != "" {
-		return tokenInstance, nil
+	if (nowMilliSecond-op.tokenInstance.CreateTime) < MaxTimeToLive*1000 && op.tokenInstance.AccessToken != "" {
+		return op.tokenInstance, nil
 	}
 	// 从缓存中获取，若缓存中不存在则重新获取
-	if tokenCache != nil{
-		ti, err := tokenCache.CacheToken(appKey, masterSecret)
-		if err != nil{
-			return tokenInstance, err
+	if op.tokenCache != nil {
+		ti, err := op.tokenCache.CacheToken(appKey, masterSecret)
+		if err != nil {
+			return op.tokenInstance, err
 		}
-		if ti != nil{ // 若获取到了token，则更新，否则使用原先的
-			tokenInstance.AccessToken = ti.Token
-			tokenInstance.CreateTime = ti.TokenCreateTime
+		if ti != nil { // 若获取到了token，则更新，否则使用原先的
+			op.tokenInstance.AccessToken = ti.Token
+			op.tokenInstance.CreateTime = ti.TokenCreateTime
 		}
 	} else {
 		ot, err := GetTokenByRequest(appKey, masterSecret)
-		if err != nil{
-			return tokenInstance, err
+		if err != nil {
+			return op.tokenInstance, err
 		}
-		if ot != nil{
-			tokenInstance.AccessToken = ot.AccessToken
-			tokenInstance.CreateTime = ot.CreateTime
+		if ot != nil {
+			op.tokenInstance.AccessToken = ot.AccessToken
+			op.tokenInstance.CreateTime = ot.CreateTime
 		}
 	}
-	return tokenInstance, nil
+	return op.tokenInstance, nil
 }
 
 func GetTokenByRequest(appKey, masterSecret string) (*OppoToken, error) {
@@ -86,6 +86,6 @@ func GetTokenByRequest(appKey, masterSecret string) (*OppoToken, error) {
 	}
 	return &OppoToken{
 		AccessToken: result.Data.AuthToken,
-		CreateTime: result.Data.CreateTime,
+		CreateTime:  result.Data.CreateTime,
 	}, nil
 }

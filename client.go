@@ -7,20 +7,24 @@ import (
 )
 
 type OppoPush struct {
-	appKey       string
-	masterSecret string
+	appKey        string
+	masterSecret  string
+	tokenInstance *OppoToken
+	tokenCache    TokenCache
 }
 
-func NewClient(appKey, masterSecret string) *OppoPush {
+func NewClient(appKey, masterSecret string, tokenCache TokenCache) *OppoPush {
 	return &OppoPush{
-		appKey:       appKey,
-		masterSecret: masterSecret,
+		appKey:        appKey,
+		masterSecret:  masterSecret,
+		tokenInstance: &OppoToken{},
+		tokenCache:    tokenCache,
 	}
 }
 
 // 保存通知栏消息内容体
 func (c *OppoPush) SaveMessageContent(msg *NotificationMessage) (*SaveSendResult, error) {
-	tokenInstance, err := GetToken(c.appKey, c.masterSecret)
+	tokenInstance, err := c.GetToken(c.appKey, c.masterSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +44,7 @@ func (c *OppoPush) SaveMessageContent(msg *NotificationMessage) (*SaveSendResult
 
 // 广播推送-通知栏消息
 func (c *OppoPush) Broadcast(broadcast *Broadcast) (*BroadcastSendResult, error) {
-	token, err := GetToken(c.appKey, c.masterSecret)
+	token, err := c.GetToken(c.appKey, c.masterSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +63,7 @@ func (c *OppoPush) Broadcast(broadcast *Broadcast) (*BroadcastSendResult, error)
 		return nil, err
 	}
 	if result.Code != 0 {
-		if err := result.CheckCode(); err != nil{
+		if err := c.CheckCode(&result.BaseBean); err != nil {
 			return &result, err
 		}
 	}
@@ -69,7 +73,7 @@ func (c *OppoPush) Broadcast(broadcast *Broadcast) (*BroadcastSendResult, error)
 
 // 单推-通知栏消息推送
 func (c *OppoPush) Unicast(message *Message) (*UnicastSendResult, error) {
-	token, err := GetToken(c.appKey, c.masterSecret)
+	token, err := c.GetToken(c.appKey, c.masterSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +90,7 @@ func (c *OppoPush) Unicast(message *Message) (*UnicastSendResult, error) {
 		return nil, err
 	}
 	if result.Code != 0 {
-		if err := result.CheckCode(); err != nil{
+		if err := c.CheckCode(&result.BaseBean); err != nil {
 			return &result, err
 		}
 	}
@@ -99,7 +103,7 @@ func (c *OppoPush) UnicastBatch(messages []Message) (*UnicastBatchSendResult, er
 	if err != nil {
 		return nil, err
 	}
-	token, err := GetToken(c.appKey, c.masterSecret)
+	token, err := c.GetToken(c.appKey, c.masterSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +120,7 @@ func (c *OppoPush) UnicastBatch(messages []Message) (*UnicastBatchSendResult, er
 		return nil, err
 	}
 	if result.Code != 0 {
-		if err := result.CheckCode(); err != nil{
+		if err := c.CheckCode(&result.BaseBean); err != nil {
 			return &result, err
 		}
 	}
@@ -125,7 +129,7 @@ func (c *OppoPush) UnicastBatch(messages []Message) (*UnicastBatchSendResult, er
 
 // 获取失效的registration_id列表
 func (c *OppoPush) FetchInvalidRegidList() (*FetchInvalidRegidListSendResult, error) {
-	token, err := GetToken(c.appKey, c.masterSecret)
+	token, err := c.GetToken(c.appKey, c.masterSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +145,7 @@ func (c *OppoPush) FetchInvalidRegidList() (*FetchInvalidRegidListSendResult, er
 		return nil, err
 	}
 	if result.Code != 0 {
-		if err := result.CheckCode(); err != nil{
+		if err := c.CheckCode(&result.BaseBean); err != nil {
 			return &result, err
 		}
 	}
@@ -221,4 +225,17 @@ func (u *Message) String() string {
 		panic(err)
 	}
 	return string(bytes)
+}
+
+func (c *OppoPush) CheckCode(b *BaseBean) error {
+	switch b.Code {
+	case InvalidAuthTokenCode:
+		if c.tokenCache != nil {
+			if err := c.tokenCache.ClearToken(); err != nil {
+				return err
+			}
+			c.tokenInstance.AccessToken = "" // 置空无效token
+		}
+	}
+	return nil
 }

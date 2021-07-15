@@ -9,7 +9,7 @@ type BaseBean struct {
 
 type AuthSendResult struct {
 	BaseBean
-	Data    struct {
+	Data struct {
 		AuthToken  string `json:"auth_token"`  //权限令牌，推送消息时，需要提供 auth_token，有效期默认为 24 小时，过期后无法使用
 		CreateTime int64  `json:"create_time"` //"时间毫秒数
 	} `json:"data,omitempty"` // 可选，返回结果
@@ -17,14 +17,14 @@ type AuthSendResult struct {
 
 type SaveSendResult struct {
 	BaseBean
-	Data    struct {
+	Data struct {
 		MessageID string `json:"message_id"` //消息 ID
 	} `json:"data,omitempty"` // 可选，返回结果
 }
 
 type BroadcastSendResult struct {
 	BaseBean
-	Data    struct {
+	Data struct {
 		MessageID string `json:"message_id"` //消息 ID
 		TaskId    string `json:"task_id"`    //推送任务 ID
 	} `json:"data,omitempty"` // 可选，返回结果
@@ -32,14 +32,14 @@ type BroadcastSendResult struct {
 
 type UnicastSendResult struct {
 	BaseBean
-	Data    struct {
+	Data struct {
 		MessageID string `json:"messageId"` //消息 ID
 	} `json:"data,omitempty"` // 可选，返回结果
 }
 
 type UnicastBatchSendResult struct {
 	BaseBean
-	Data    []struct {
+	Data []struct {
 		MessageID      string `json:"messageId"` //消息 ID
 		RegistrationID string `json:"registrationId"`
 		ErrorCode      int    `json:"errorCode,omitempty"`    // 失败码
@@ -49,21 +49,8 @@ type UnicastBatchSendResult struct {
 
 type FetchInvalidRegidListSendResult struct {
 	BaseBean
-	Data    struct {
+	Data struct {
 		RegistrationIds []string `json:"registration_ids"`
 		TotalCount      int      `json:"totalCount"`
 	} `json:"data,omitempty"` // 可选，返回结果
-}
-
-func (b *BaseBean) CheckCode() error {
-	switch b.Code {
-	case InvalidAuthTokenCode:
-		if tokenCache != nil {
-			if err := tokenCache.ClearToken(); err != nil{
-				return err
-			}
-			tokenInstance.AccessToken = ""   // 置空无效token
-		}
-	}
-	return nil
 }
